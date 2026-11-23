@@ -3,3 +3,5 @@
 # env              = "prod"
 # domain_name      = "play.example.com"
 # hosted_zone_name = "example.com"
+# budget_email     = "you@example.com"  # budget alerts; keep real addresses out of git
+# budget_limit_usd = 5

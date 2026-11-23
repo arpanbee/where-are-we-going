@@ -62,3 +62,15 @@ variable "generator_schedule" {
   type        = string
   default     = "cron(0 3 * * ? *)"
 }
+
+variable "budget_limit_usd" {
+  description = "Monthly AWS cost budget for this project (Project tag), in USD."
+  type        = number
+  default     = 5
+}
+
+variable "budget_email" {
+  description = "Email for budget alerts. Set it in terraform.tfvars (gitignored), not here: the repo is public. Empty disables the budget."
+  type        = string
+  default     = ""
+}
