@@ -1,6 +1,4 @@
-// Hand-written puzzles from the prototype (DAILY in web/app.js). Served when a day
-// has no PUZZLE# item in DynamoDB.
-export const FALLBACK_PUZZLES = [
+[
   {
     "destId": "lisbon",
     "clues": [
@@ -155,4 +153,4 @@ export const FALLBACK_PUZZLES = [
       "The Bosphorus runs through the middle."
     ]
   }
-];
+]

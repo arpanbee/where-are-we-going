@@ -6,5 +6,10 @@
 crash.log
 infra/backend.hcl
 infra/terraform.tfvars
-node_modules/
 infra/.build/
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/

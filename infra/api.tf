@@ -40,14 +40,17 @@ data "aws_secretsmanager_secret" "muse" {
 }
 
 # --- Lambda code --------------------------------------------------------------
-# One bundle for both functions. The AWS SDK v3 ships with the Node 22 runtime,
-# so node_modules (dev-only, for local scripts) is excluded.
+# One bundle for both functions: the wawg/ package. boto3 ships with the Python
+# runtime, so there are no third-party dependencies to package.
 
 data "archive_file" "api" {
   type        = "zip"
   source_dir  = "${path.module}/../api"
   output_path = "${path.module}/.build/api.zip"
-  excludes    = ["node_modules", "node_modules/**", "test", "test/**", "package-lock.json"]
+  excludes = [
+    ".venv", ".venv/**", "tests", "tests/**", ".pytest_cache", ".pytest_cache/**",
+    "**/__pycache__/**", "requirements-dev.txt", "pyproject.toml",
+  ]
 }
 
 locals {
@@ -90,6 +93,8 @@ resource "aws_iam_role_policy" "lambda" {
           "dynamodb:GetItem",
           "dynamodb:PutItem",
           "dynamodb:UpdateItem",
+          "dynamodb:DeleteItem", # leaving a couple (inside TransactWriteItems)
+          "dynamodb:ConditionCheckItem",
           "dynamodb:BatchGetItem",
           "dynamodb:Query",
         ]
@@ -122,9 +127,9 @@ resource "aws_cloudwatch_log_group" "fn" {
 resource "aws_lambda_function" "api" {
   function_name    = local.fn_api
   role             = aws_iam_role.lambda.arn
-  runtime          = "nodejs22.x"
+  runtime          = "python3.13"
   architectures    = ["arm64"]
-  handler          = "handlers/api.handler"
+  handler          = "wawg.http_api.handler"
   filename         = data.archive_file.api.output_path
   source_code_hash = data.archive_file.api.output_base64sha256
   memory_size      = 256
@@ -138,9 +143,9 @@ resource "aws_lambda_function" "api" {
 resource "aws_lambda_function" "generator" {
   function_name    = local.fn_generator
   role             = aws_iam_role.lambda.arn
-  runtime          = "nodejs22.x"
+  runtime          = "python3.13"
   architectures    = ["arm64"]
-  handler          = "handlers/generate-daily.handler"
+  handler          = "wawg.generate_daily.handler"
   filename         = data.archive_file.api.output_path
   source_code_hash = data.archive_file.api.output_base64sha256
   memory_size      = 256
