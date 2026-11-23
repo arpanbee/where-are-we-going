@@ -1,0 +1,10 @@
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+crash.log
+infra/backend.hcl
+infra/terraform.tfvars
+node_modules/
+infra/.build/

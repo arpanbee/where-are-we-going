@@ -1,0 +1,197 @@
+{
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const seg=s=>String(s).replace(/[^A-Za-z0-9_\-.~:@+]/g,'_');
+const slug=n=>n.toLowerCase().normalize('NFD').replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'');
+const RAW=`Paris|France|48.86|2.35;Rome|Italy|41.90|12.50;Barcelona|Spain|41.39|2.17;Lisbon|Portugal|38.72|-9.14;Amsterdam|Netherlands|52.37|4.90;London|UK|51.51|-0.13;Edinburgh|UK|55.95|-3.19;Dublin|Ireland|53.35|-6.26;Reykjavik|Iceland|64.15|-21.94;Santorini|Greece|36.39|25.46;Athens|Greece|37.98|23.73;Mykonos|Greece|37.45|25.33;Amalfi Coast|Italy|40.63|14.60;Venice|Italy|45.44|12.32;Florence|Italy|43.77|11.26;Cinque Terre|Italy|44.13|9.71;Lake Como|Italy|46.00|9.26;Dubrovnik|Croatia|42.65|18.09;Split|Croatia|43.51|16.44;Prague|Czechia|50.08|14.44;Vienna|Austria|48.21|16.37;Budapest|Hungary|47.50|19.04;Berlin|Germany|52.52|13.40;Munich|Germany|48.14|11.58;Copenhagen|Denmark|55.68|12.57;Stockholm|Sweden|59.33|18.07;Interlaken|Switzerland|46.69|7.86;Zermatt|Switzerland|46.02|7.75;Seville|Spain|37.39|-5.98;Madrid|Spain|40.42|-3.70;Ibiza|Spain|38.91|1.43;Mallorca|Spain|39.57|2.65;Porto|Portugal|41.15|-8.61;Madeira|Portugal|32.65|-16.91;Nice|France|43.70|7.27;Provence|France|43.95|4.80;Istanbul|Türkiye|41.01|28.98;Cappadocia|Türkiye|38.64|34.83;Marrakech|Morocco|31.63|-7.99;Cairo|Egypt|30.04|31.24;Cape Town|South Africa|-33.92|18.42;Zanzibar|Tanzania|-6.17|39.20;Serengeti|Tanzania|-2.33|34.83;Maasai Mara|Kenya|-1.49|35.14;Seychelles|Seychelles|-4.62|55.45;Mauritius|Mauritius|-20.35|57.55;Victoria Falls|Zambia / Zimbabwe|-17.92|25.86;Dubai|UAE|25.20|55.27;Petra|Jordan|30.33|35.44;Maldives|Maldives|3.20|73.22;Goa|India|15.30|74.12;Jaipur|India|26.91|75.79;Kerala|India|10.85|76.27;Sri Lanka|Sri Lanka|7.87|80.77;Kathmandu|Nepal|27.72|85.32;Bangkok|Thailand|13.76|100.50;Phuket|Thailand|7.88|98.39;Chiang Mai|Thailand|18.79|98.99;Bali|Indonesia|-8.34|115.09;Singapore|Singapore|1.35|103.82;Hanoi|Vietnam|21.03|105.85;Ha Long Bay|Vietnam|20.91|107.18;Hoi An|Vietnam|15.88|108.33;Siem Reap|Cambodia|13.36|103.86;Palawan|Philippines|9.83|118.74;Hong Kong|China|22.32|114.17;Shanghai|China|31.23|121.47;Beijing|China|39.90|116.41;Seoul|South Korea|37.57|126.98;Tokyo|Japan|35.68|139.69;Kyoto|Japan|35.01|135.77;Okinawa|Japan|26.21|127.68;Hokkaido|Japan|43.06|141.35;Taipei|Taiwan|25.03|121.57;Sydney|Australia|-33.87|151.21;Melbourne|Australia|-37.81|144.96;Great Barrier Reef|Australia|-18.29|147.70;Queenstown|New Zealand|-45.03|168.66;Bora Bora|French Polynesia|-16.50|-151.74;Fiji|Fiji|-17.71|178.07;Maui|USA|20.80|-156.33;Honolulu|USA|21.31|-157.86;New York City|USA|40.71|-74.01;Las Vegas|USA|36.17|-115.14;San Francisco|USA|37.77|-122.42;Los Angeles|USA|34.05|-118.24;New Orleans|USA|29.95|-90.07;Miami|USA|25.76|-80.19;Key West|USA|24.56|-81.78;Nashville|USA|36.16|-86.78;Chicago|USA|41.88|-87.63;Yellowstone|USA|44.43|-110.59;Grand Canyon|USA|36.11|-112.11;Yosemite|USA|37.87|-119.54;Napa Valley|USA|38.30|-122.29;Charleston|USA|32.78|-79.93;Savannah|USA|32.08|-81.09;Asheville|USA|35.60|-82.55;Aspen|USA|39.19|-106.82;Sedona|USA|34.87|-111.76;Anchorage|USA|61.22|-149.90;Banff|Canada|51.18|-115.57;Vancouver|Canada|49.28|-123.12;Montreal|Canada|45.50|-73.57;Quebec City|Canada|46.81|-71.21;Cancún|Mexico|21.16|-86.85;Tulum|Mexico|20.21|-87.47;Mexico City|Mexico|19.43|-99.13;Oaxaca|Mexico|17.07|-96.73;Cabo San Lucas|Mexico|22.89|-109.92;Havana|Cuba|23.11|-82.37;San Juan|Puerto Rico|18.47|-66.11;Aruba|Aruba|12.52|-69.97;Turks and Caicos|Turks and Caicos|21.69|-71.80;Jamaica|Jamaica|18.11|-77.30;St. Lucia|St. Lucia|13.91|-60.98;Nassau|Bahamas|25.05|-77.36;Arenal|Costa Rica|10.46|-84.70;Cartagena|Colombia|10.39|-75.48;Machu Picchu|Peru|-13.16|-72.55;Galápagos|Ecuador|-0.95|-90.97;Rio de Janeiro|Brazil|-22.91|-43.17;Buenos Aires|Argentina|-34.60|-58.38;Patagonia|Argentina / Chile|-50.34|-72.26;Easter Island|Chile|-27.11|-109.35`;
+const DEST=RAW.split(';').map(s=>{const[n,c,a,o]=s.split('|');return{id:slug(n),name:n,country:c,lat:+a,lon:+o}});
+const BY=Object.fromEntries(DEST.map(d=>[d.id,d]));
+const DAILY=[
+['lisbon',["Built across seven hills, so pack shoes with grip.","Locals queue for an egg-custard tart dusted with cinnamon.","An old yellow tram is half commute, half ride.","A mournful local music style is on UNESCO's heritage list.","Its red suspension bridge looks a lot like San Francisco's.","It's the westernmost capital in mainland Europe."]],
+['kyoto',["Spring and autumn here book out months ahead.","You'll take your shoes off more than once a day.","Thousands of orange gates line one hillside path.","A bamboo grove here is best seen before 7am.","It was the imperial capital for over a thousand years.","Gion's geisha district is a short walk from your ryokan."]],
+['cape-town',["Here, summer holidays fall around Christmas.","World-class wine country is under an hour's drive away.","Penguins waddle on a beach just south of town.","A cable car climbs a famously flat-topped mountain.","Mandela was held on an island you can see from the waterfront.","Table Mountain looms over the city."]],
+['reykjavik',["Pack a swimsuit and a winter coat in the same bag.","In June the sun barely bothers to set.","Locals are fiercely loyal to their hot dogs.","A famous milky-blue geothermal lagoon sits near the airport.","Winter visitors come hoping for the northern lights.","It's the northernmost capital of a sovereign country."]],
+['tulum',["Bring reef-safe sunscreen.","You can swim in underground freshwater sinkholes.","Boho beach clubs share the coast with jungle.","Ancient ruins sit on a cliff right above the beach.","It's about two hours south of a giant resort city.","It's on Mexico's Riviera Maya."]],
+['amalfi-coast',["Expect stairs. Lots of stairs. And hairpin bends.","The local digestif is made from enormous lemons.","Pastel houses stack up cliffs above the sea.","Ferries hop between Positano and its neighbours.","Pompeii is an easy day trip.","It's the cliff-hugging coastline south of Naples."]],
+['banff',["Pack layers: even summer mornings can be near freezing.","Watch for elk wandering through town.","Lakes here are an unreal milky turquoise from glacier silt.","It's the oldest national park in its country.","Lake Louise is a short drive away.","It's in the Canadian Rockies, west of Calgary."]],
+['marrakech',["Haggling is expected, and half the fun.","Mint tea is poured from a dramatic height.","Storytellers and food stalls fill a giant square at night.","Many stays are in riads built around a courtyard.","Snowy Atlas peaks show up on a clear winter day.","It's Morocco's Red City."]],
+['bali',["Rice terraces, surf breaks and yoga retreats on one island.","Small woven offerings appear on sidewalks every morning.","One day a year, the whole island goes silent.","Monkeys run a forest sanctuary in Ubud.","A Hindu-majority island in the largest Muslim-majority country.","It's the Indonesian island just east of Java."]],
+['new-orleans',["Leave room for powdered-sugar doughnuts.","A brass band might march right past your table.","Locals call the road median the neutral ground.","Wrought-iron balconies line the oldest quarter.","Mardi Gras is its biggest party.","It sits on the Mississippi in Louisiana."]],
+['queenstown',["Bring your nerve, and maybe travel insurance.","Commercial bungee jumping was born on a bridge nearby.","Middle-earth film scenery is a short drive away.","Day trips run to Milford Sound.","It sits on Lake Wakatipu.","It's the South Island's adventure capital."]],
+['dubrovnik',["Marble streets are polished slippery-smooth.","You can walk the whole loop of its city walls.","A cable car climbs to sunset views over red roofs.","TV fans know it as King's Landing.","It's called the Pearl of the Adriatic.","It's at the southern tip of Croatia."]],
+['cartagena',["It's hot and humid year-round, so dress light.","Fruit sellers in bright dresses balance bowls on their heads.","Colonial walls ring a colourful old town.","Day trips run to the Rosario Islands.","It's on South America's Caribbean coast.","It's in Colombia, not its namesake in Spain."]],
+['istanbul',["Breakfast here is a spread, not a meal.","Ferries are the best way to commute.","A covered market holds thousands of shops.","The call to prayer echoes across the water.","The city straddles two continents.","The Bosphorus runs through the middle."]]
+];
+const START=new Date(2026,10,22);
+const ymd=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+const NOW=new Date(),TODAY=ymd(NOW);
+const DAY=Math.max(0,Math.round((new Date(NOW.getFullYear(),NOW.getMonth(),NOW.getDate())-START)/864e5));
+const WEEK=ymd(new Date(NOW.getFullYear(),NOW.getMonth(),NOW.getDate()-((NOW.getDay()+6)%7)));
+const dailyPuzzle=()=>{const[id,c]=DAILY[DAY%DAILY.length];return{key:'d'+TODAY,destId:id,clues:c,kind:'daily',num:DAY+1}};
+const rad=x=>x*Math.PI/180;
+const dist=(a,b)=>{const h=Math.sin(rad(b.lat-a.lat)/2)**2+Math.cos(rad(a.lat))*Math.cos(rad(b.lat))*Math.sin(rad(b.lon-a.lon)/2)**2;return 2*6371*Math.asin(Math.sqrt(h))};
+const bear=(a,b)=>{const y=Math.sin(rad(b.lon-a.lon))*Math.cos(rad(b.lat)),x=Math.cos(rad(a.lat))*Math.sin(rad(b.lat))-Math.sin(rad(a.lat))*Math.cos(rad(b.lat))*Math.cos(rad(b.lon-a.lon));return(Math.atan2(y,x)*180/Math.PI+360)%360};
+const arrow=d=>['↑','↗','→','↘','↓','↙','←','↖'][Math.round(d/45)%8];
+const tier=(g,t)=>{if(g===t)return'g';const k=dist(BY[g],BY[t]);return k<500?'y':k<2000?'o':'r'};
+const SQ={g:'🟩',y:'🟨',o:'🟧',r:'🟥'};
+const fmt=n=>Math.round(n).toLocaleString();
+const ls={get(k,d){try{return JSON.parse(localStorage.getItem('wawg:'+k))??d}catch(e){return d}},set(k,v){try{localStorage.setItem('wawg:'+k,JSON.stringify(v))}catch(e){}}};
+const use=n=>{try{return window.claude?.use?Promise.resolve(window.claude.use(n)).catch(()=>null):Promise.resolve(null)}catch(e){return Promise.resolve(null)}};
+
+const S={db:null,user:null,uid:null,code:null,couple:null,names:{},plays:ls.get('plays',{}),votes:ls.get('votes',{}),customs:{},tab:'play',cur:dailyPuzzle(),sample:null,err:'',ok:'',ready:false,make:{dest:null,note:'',clues:null,busy:false},lastN:0};
+const meKey=()=>S.code?S.uid:'local';
+const partner=()=>S.couple?.members?.find(m=>m!==S.uid)||null;
+const nm=id=>id===meKey()?'You':(S.names[id]||'Your partner');
+const pid=(k,u)=>k+'_'+seg(u);
+const playOf=(p,u)=>u?S.plays[pid(p.key,u)]:null;
+const blank=p=>({puzzle:p.key,uid:meKey(),kind:p.kind,date:TODAY,dest:p.destId,guesses:[],done:false,solved:false,points:0});
+const grid=(pl,p)=>pl.guesses.map(g=>SQ[tier(g,p.destId)]).join('');
+const customPuzzle=(id,c)=>({key:'c'+seg(id),destId:c.dest,clues:c.clues,kind:'custom',from:c.from});
+const validCustom=c=>c&&BY[c.dest]&&Array.isArray(c.clues)&&c.clues.length===6;
+
+let q=Promise.resolve();
+function write(path,data){q=q.then(()=>S.db.doc(path).set(data)).catch(e=>{S.err=e?.code==='invalid_argument'?"Couldn't save. Your partner needs to give you Editor access to this page in Share.":"Couldn't save just now. Try again in a moment.";render()});return q}
+function savePlay(p,pl){S.plays[pid(p.key,meKey())]=pl;if(S.code)write(`couples/${S.code}/plays/${pid(p.key,S.uid)}`,pl);else ls.set('plays',S.plays)}
+
+function guess(id){const p=S.cur;const pl={...(playOf(p,meKey())||blank(p))};if(pl.done||pl.guesses.includes(id)||!BY[id])return;
+  pl.guesses=[...pl.guesses,id];const ok=id===p.destId;
+  if(ok||pl.guesses.length>=6){pl.done=true;pl.solved=ok;pl.points=ok?7-pl.guesses.length:0}
+  savePlay(p,pl);render();document.getElementById('gi')?.focus()}
+
+function weekScores(){const ids=S.code?(S.couple?.members||[S.uid]):['local'];const t=Object.fromEntries(ids.map(i=>[i,0]));
+  Object.values(S.plays).forEach(pl=>{if(pl&&pl.kind==='daily'&&pl.date>=WEEK&&t[pl.uid]!=null)t[pl.uid]+=+pl.points||0});return Object.entries(t)}
+
+function shareText(p,pl){let s=(p.kind==='daily'?`Where are we going? #${p.num}`:'Where are we going? · partner round')+`\n${grid(pl,p)} ${pl.solved?pl.guesses.length:'X'}/6`;
+  if(S.code&&p.kind==='daily'&&partner())s+='\n'+weekScores().map(([i,v])=>`${i===S.uid?'Me':(S.names[i]||'Them')} ${v}`).join(' – ')+' this week ✈️';return s}
+
+function vPlay(){const p=S.cur,t=BY[p.destId],pl=playOf(p,meKey())||blank(p);const n=pl.done?6:Math.min(6,pl.guesses.length+1);const fresh=n>S.lastN&&S.lastN>0;S.lastN=n;
+  const clues=p.clues.map((c,i)=>i<n?`<li class="clue${fresh&&i===n-1?' new':''}"><span class="cn">${i+1}</span><span>${esc(c)}</span></li>`:`<li class="clue locked"><span class="cn">${i+1}</span><span>Locked. Each wrong guess unlocks the next clue.</span></li>`).join('');
+  const rows=pl.guesses.map(g=>{const d=BY[g];if(!d)return'';return`<li class="g ${tier(g,p.destId)}"><span class="sq"></span><b>${esc(d.name)}</b><span class="ct">${esc(d.country)}</span>${g===p.destId?'<span class="km">Landed</span>':`<span class="km">${fmt(dist(d,t))} km</span><span class="ar" aria-label="direction to target">${arrow(bear(d,t))}</span>`}</li>`}).join('');
+  const v=S.votes[seg(p.destId)+'_'+seg(meKey())]?.v;
+  const foot=pl.done?`<div class="result"><div class="stamp${pl.solved?'':' miss'}">${pl.solved?'Arrived':'Missed it'}: ${esc(t.name)}</div>
+    <p>${pl.solved?`Solved in ${pl.guesses.length}/6 for <b>${pl.points} point${pl.points>1?'s':''}</b>.`:`It was ${esc(t.name)}, ${esc(t.country)}. No points this time.`}</p>
+    <div class="row"><span>Would you go?</span><button class="btn ghost" data-act="vote" data-d="${p.destId}" data-v="1" aria-pressed="${v===1}">We should go</button><button class="btn ghost" data-act="vote" data-d="${p.destId}" data-v="0" aria-pressed="${v===0}">Not for me</button></div>
+    <pre class="share" id="sharetxt">${esc(shareText(p,pl))}</pre><div class="row" style="margin-top:10px"><button class="btn coral" data-act="share">Copy result</button>${p.kind==='custom'?'<button class="btn ghost" data-act="today">Back to today’s puzzle</button>':''}</div></div>`
+    :`<div class="ask"><label for="gi">Your guess (${pl.guesses.length}/6)</label><input type="text" id="gi" autocomplete="off" placeholder="Start typing a city, island or region"><div class="sug" id="sug-gi"></div></div>`;
+  const label=p.kind==='daily'?['Flight','#'+p.num]:['Round','From '+(S.names[p.from]||'partner')];
+  return`<div class="grid"><div><div class="pass"><div class="ph"><div><small>From</small><strong>Home</strong></div><svg class="plane" viewBox="0 0 120 24" preserveAspectRatio="none" aria-hidden="true"><path d="M2 12H104" stroke="currentColor" stroke-width="2" stroke-dasharray="4 6" fill="none"/><path d="M104 4l14 8-14 8 4-8z" fill="currentColor"/></svg><div><small>To</small><strong>${pl.done?esc(t.name):'???'}</strong></div><div class="stub"><small>${label[0]}</small><strong>${esc(label[1])}</strong></div></div>
+    <div class="pb"><ol class="clues">${clues}</ol><ul class="gs">${rows}</ul>${foot}</div></div>
+    <p class="muted">Colours show how close a guess was: green is right, yellow under 500 km, orange under 2,000 km, red further. The arrow points toward the answer.</p></div>
+    <aside>${vPartner(p,pl)}${vWeek()}</aside></div>`}
+
+function vPartner(p,mine){
+  if(p.kind==='custom')return`<div class="side"><h3>Set by ${esc(S.names[p.from]||'your partner')}</h3><p>They picked this place for you. The clues were written for this round.</p></div>`;
+  if(!S.code)return`<div class="side"><h3>Play it together</h3><p>Pair up to see each other’s results, keep a weekly score and build a shared bucket list.</p><button class="btn" data-tab="pair">Pair up</button></div>`;
+  const o=partner();if(!o)return`<div class="side"><h3>Waiting for your partner</h3><p>Give them your code: <span class="code">${esc(S.code)}</span></p></div>`;
+  const pp=playOf(p,o),who=esc(nm(o));
+  const body=!pp||!pp.guesses?.length?`${who} hasn’t played today’s puzzle yet.`:!pp.done?`${who} is still guessing.`:!mine.done?`${who} has finished. Finish yours to see how they did.`:`<p style="font-size:22px;margin:0">${grid(pp,p)}</p><p>${pp.solved?`${pp.guesses.length}/6 · ${pp.points} pts`:'Missed it'}</p>`;
+  return`<div class="side"><h3>${who}</h3>${body.startsWith('<')?body:`<p>${body}</p>`}</div>`}
+
+function vWeek(){const w=weekScores(),max=Math.max(1,...w.map(x=>x[1])),top=Math.max(...w.map(x=>x[1]));const lead=w.filter(x=>x[1]===top).length===1&&top>0;
+  return`<div class="side"><h3>This week</h3>${w.map(([i,v])=>`<div class="bar${lead&&v===top?' lead':''}"><span>${esc(nm(i))}</span><span class="t"><i style="width:${Math.round(v/max*100)}%"></i></span><b>${v}</b></div>`).join('')}
+  <p class="muted">Up to 6 points a day. Resets Monday. ${S.code&&partner()?'Whoever leads on Sunday picks date night.':''}</p></div>`}
+
+function vRounds(){
+  if(!S.code||!partner())return`<section><h2>Partner rounds</h2><p>Pick a place that means something to the two of you, and your partner has to guess it from six clues. Pair up first.</p><button class="btn" data-tab="pair">Pair up</button></section>`;
+  const o=partner(),cs=Object.entries(S.customs).filter(([,c])=>validCustom(c));
+  const inbox=cs.filter(([,c])=>c.to===S.uid).sort((a,b)=>b[1].created-a[1].created),sent=cs.filter(([,c])=>c.from===S.uid).sort((a,b)=>b[1].created-a[1].created);
+  const st=(id,c,u)=>{const pl=playOf(customPuzzle(id,c),u);return!pl||!pl.guesses?.length?'Not played yet':!pl.done?'In progress':pl.solved?`Solved in ${pl.guesses.length}/6`:'Missed it'};
+  const m=S.make,d=BY[m.dest];
+  const clueIns=m.clues?`<div style="margin-top:14px"><label>Clues, vaguest first. Edit anything.</label>${m.clues.map((c,i)=>`<div class="cluein"><span class="cn">${i+1}</span><input type="text" id="mkc${i}" value="${esc(c)}"></div>`).join('')}<button class="btn coral" data-act="send">Send to ${esc(nm(o))}</button></div>`:'';
+  const make=`<div class="side"><h3>Make one for ${esc(nm(o))}</h3>${d?`<div class="chip">${esc(d.name)}, ${esc(d.country)}<button data-act="unpick" aria-label="Change destination">×</button></div>`:`<label for="mk">Destination</label><input type="text" id="mk" autocomplete="off" placeholder="Honeymoon spot, first trip, dream trip"><div class="sug" id="sug-mk"></div>`}
+    <div style="margin-top:12px"><label for="mknote">A private hint for the clue writer (optional)</label><textarea id="mknote" placeholder="e.g. where we got engaged, the trip with the missed ferry">${esc(m.note)}</textarea></div>
+    ${d&&!m.clues?`<div class="row" style="margin-top:12px">${S.sample?`<button class="btn" data-act="gen" ${m.busy?'disabled':''}>${m.busy?'Writing clues…':'Write the clues for me'}</button>`:''}<button class="btn ghost" data-act="selfwrite">I’ll write them</button></div>`:''}${clueIns}</div>`;
+  const list=(arr,mine)=>arr.length?`<div class="cards">${arr.map(([id,c])=>`<div class="item"><div><b>${mine?esc(BY[c.dest].name):'Mystery destination'}</b><span class="muted">${new Date(c.created).toLocaleDateString()} · ${mine?st(id,c,o):st(id,c,S.uid)}</span></div>${mine?'':`<button class="btn" data-act="playc" data-id="${esc(id)}">Play</button>`}</div>`).join('')}</div>`:`<p class="muted">${mine?'Nothing sent yet.':'Nothing waiting for you yet.'}</p>`;
+  return`<div class="grid"><div><section><h2>For you</h2>${list(inbox,false)}</section><section><h2>You sent</h2>${list(sent,true)}</section></div><aside>${make}</aside></div>`}
+
+function vList(){const ids=S.code?(S.couple?.members||[]):['local'];const by={};
+  Object.values(S.votes).forEach(v=>{if(v&&BY[v.dest])(by[v.dest]??={})[v.uid]=v.v});
+  const both=Object.keys(by).filter(d=>ids.length>1&&ids.every(i=>by[d][i]===1));
+  const mine=Object.keys(by).filter(d=>by[d][meKey()]===1&&!both.includes(d));
+  const theirs=S.code&&partner()?Object.keys(by).filter(d=>by[d][partner()]===1&&by[d][S.uid]==null):[];
+  const tags=(a,cl)=>`<div class="list">${a.map(d=>`<div class="tag ${cl}"><b>${esc(BY[d].name)}</b><span>${esc(BY[d].country)}</span></div>`).join('')}</div>`;
+  return`<section><h2>Trips we both want</h2>${both.length?tags(both,''):`<p class="muted">${S.code&&partner()?'When you both tap “We should go” on the same place, it lands here.':'Pair up and this fills with places you both said yes to.'}</p>`}</section>
+  <section><h2>Only you so far</h2>${mine.length?tags(mine,'solo'):'<p class="muted">Finish a puzzle and tap “We should go”.</p>'}</section>
+  ${theirs.length?`<section><h2>${esc(nm(partner()))} wants to go</h2><p class="muted">Play those puzzles to cast your vote.</p>${tags(theirs,'solo')}</section>`:''}`}
+
+function vPair(){
+  if(!S.ready)return'<p class="muted">Checking your sign-in…</p>';
+  if(!S.db)return`<section><h2>Pairing is coming soon</h2><p>For now you can play the daily puzzle solo. Your results save in this browser.</p></section>`;
+  if(S.code){const ms=S.couple?.members||[];return`<section><h2>${ms.length>1?'You’re paired':'Waiting for your partner'}</h2><p>Your couple code</p><p class="code">${esc(S.code)}</p>${ms.length>1?`<p>${ms.map(i=>esc(i===S.uid?'You':nm(i))).join(' + ')}</p>`:`<p>Ask your partner to open this page, go to Pair up and enter the code.</p>`}<button class="btn ghost" data-act="unpair">Leave this pairing</button></section>`}
+  return`<div class="grid"><section><h2>Start a pairing</h2><p>Get a code, then have your partner enter it on their side.</p><button class="btn" data-act="create">Create a couple code</button>
+    <h2 style="margin-top:28px">Got a code?</h2><label for="jc">Enter your partner’s code</label><div class="row"><input type="text" id="jc" maxlength="6" placeholder="ABC123" style="max-width:12em;text-transform:uppercase"><button class="btn" data-act="join">Join</button></div></section>
+    <aside class="side"><h3>Before your partner joins</h3><p>This prototype saves shared data with your Claude account. In Share, invite your partner by email as an <b>Editor</b> so their guesses can save.</p><p class="muted">They need to be signed in to Claude. A launch version would replace this with your own sign-in and database.</p></aside></div>`}
+
+function refreshSug(id){const inp=document.getElementById(id),box=document.getElementById('sug-'+id);if(!inp||!box)return;const v=inp.value.trim().toLowerCase();if(!v){box.innerHTML='';return}
+  const used=id==='gi'?(playOf(S.cur,meKey())?.guesses||[]):[];
+  const r=DEST.filter(d=>!used.includes(d.id)&&(d.name.toLowerCase().includes(v)||d.country.toLowerCase().startsWith(v))).sort((a,b)=>b.name.toLowerCase().startsWith(v)-a.name.toLowerCase().startsWith(v)).slice(0,6);
+  box.innerHTML=r.length?r.map(d=>`<button data-act="${id==='gi'?'guess':'pick'}" data-d="${d.id}">${esc(d.name)}<span>${esc(d.country)}</span></button>`).join(''):'<p class="none">Not on the destination list. Try a nearby city or region.</p>'}
+
+function render(){
+  if(document.getElementById('mkc0'))S.make.clues=[0,1,2,3,4,5].map(i=>document.getElementById('mkc'+i)?.value??'');
+  const nt=document.getElementById('mknote');if(nt)S.make.note=nt.value;
+  const a=document.activeElement,keep=a&&a.id&&a.tagName==='INPUT'?{id:a.id,v:a.value,s:a.selectionStart}:null;
+  document.querySelectorAll('.tabs button').forEach(b=>b.setAttribute('aria-current',String(b.dataset.tab===S.tab)));
+  $('#pairtab').textContent=S.code?(S.couple?.members?.length>1?'Paired':'Pair (waiting)'):'Pair up';
+  const note=S.err?`<div class="note err"><span>${esc(S.err)}</span><button data-act="dismiss">Dismiss</button></div>`:S.ok?`<div class="note ok"><span>${esc(S.ok)}</span><button data-act="dismiss">OK</button></div>`:'';
+  $('#app').innerHTML=note+({play:vPlay,rounds:vRounds,list:vList,pair:vPair}[S.tab])();
+  if(keep){const e=document.getElementById(keep.id);if(e){e.value=keep.v;e.focus();try{e.setSelectionRange(keep.s,keep.s)}catch(x){}refreshSug(keep.id)}}}
+
+let subs=[],namesFor='';
+const fail=()=>{S.err='Lost the connection to your shared game. Reload to try again.';render()};
+function subscribe(){subs.forEach(u=>u());subs=[];const base='couples/'+S.code;
+  subs.push(S.db.doc(base).onSnapshot(d=>{S.couple=d.exists?d.data():null;loadNames();render()},fail));
+  const col=(name,key)=>subs.push(S.db.collection(base+'/'+name).onSnapshot(s=>{const o={};s.docs.forEach(d=>{o[d.id]=d.data()});S[key]=o;render()},fail));
+  S.plays={};S.votes={};col('plays','plays');col('custom','customs');col('votes','votes')}
+async function loadNames(){const ids=S.couple?.members||[];if(ids.join()===namesFor||!S.user?.profiles)return;namesFor=ids.join();
+  try{const ps=await S.user.profiles(ids);ids.forEach(i=>{S.names[i]=(ps?.[i]?.name||'').split(' ')[0]});render()}catch(e){}}
+async function linkTo(code){const lp=S.plays[pid(dailyPuzzle().key,'local')];
+  await S.db.doc(`data/users/${S.uid}/couple`).set({code});S.code=code;subscribe();
+  if(lp){const np={...lp,uid:S.uid};S.plays[pid(dailyPuzzle().key,S.uid)]=np;write(`couples/${code}/plays/${pid(dailyPuzzle().key,S.uid)}`,np)}}
+async function createPair(){const code=Array.from({length:6},()=>'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'[Math.floor(Math.random()*32)]).join('');
+  try{await S.db.doc('couples/'+code).set({members:[S.uid],created:Date.now()});await linkTo(code)}catch(e){S.err="Couldn't create a code. You may only have view access to this page."}render()}
+async function joinPair(raw){const code=raw.trim().toUpperCase();if(!/^[A-Z0-9]{6}$/.test(code)){S.err='Codes are 6 letters and numbers.';return render()}
+  try{const d=await S.db.doc('couples/'+code).get();if(!d.exists){S.err='No couple found with that code.';return render()}
+    const m=Array.isArray(d.data().members)?d.data().members:[];if(!m.includes(S.uid)){if(m.length>=2){S.err='That code already has two people.';return render()}await S.db.doc('couples/'+code).update({members:[...m,S.uid]})}
+    await linkTo(code);S.tab='play';S.ok='Paired! Today’s puzzle is now shared.'}catch(e){S.err="Couldn't join. Your partner needs to invite you as an Editor in Share first."}render()}
+async function unpair(){try{await S.db.doc(`data/users/${S.uid}/couple`).set({code:null})}catch(e){}subs.forEach(u=>u());subs=[];S.code=null;S.couple=null;S.customs={};S.plays=ls.get('plays',{});S.votes=ls.get('votes',{});namesFor='';render()}
+function vote(d,v){if(!BY[d])return;const k=meKey(),id=seg(d)+'_'+seg(k),o={dest:d,uid:k,v};S.votes[id]=o;if(S.code)write(`couples/${S.code}/votes/${id}`,o);else ls.set('votes',S.votes);render()}
+async function genClues(){const d=BY[S.make.dest];if(!d||!S.sample)return;S.make.busy=true;render();
+  const note=S.make.note.trim().slice(0,240);
+  try{const v=await S.sample.json(`You write clues for a couples' travel guessing game. The answer is "${d.name}" (${d.country}). Write exactly 6 clues from vague to specific: clue 1 is about the vibe, weather, food or what to pack; each later clue narrows it down; clue 6 is nearly a giveaway. Never use the destination's name, the country's name, or words formed from them. Every clue must be factually accurate and under 16 words.${note?` The person setting the puzzle left a private hint about why this place matters to the couple. If it fits, turn it into clue 3 or 4 without naming the place. Hint: ${JSON.stringify(note)}`:''} Reply with only a JSON array of 6 strings.`);
+    const arr=Array.isArray(v)?v:(Array.isArray(v?.clues)?v.clues:[]);if(arr.length<6)throw 0;S.make.clues=arr.slice(0,6).map(x=>String(x).slice(0,160))}
+  catch(e){S.err=e?.code==='rate_limited'?'Too many requests. Wait a minute and try again.':"Couldn't write clues just now. You can write them yourself.";S.make.clues=['','','','','','']}
+  S.make.busy=false;render()}
+async function sendCustom(){render();const cl=(S.make.clues||[]).map(c=>c.trim());const d=BY[S.make.dest];
+  if(!d||cl.length<6||cl.some(c=>!c)){S.err='Fill in all 6 clues first.';return render()}
+  if(cl.slice(0,5).some(c=>c.toLowerCase().includes(d.name.toLowerCase()))){S.err='One of the first five clues names the place. That gives it away.';return render()}
+  try{await S.db.collection(`couples/${S.code}/custom`).add({from:S.uid,to:partner(),dest:d.id,clues:cl,created:Date.now()});S.make={dest:null,note:'',clues:null,busy:false};S.ok=`Sent. It’s waiting in ${nm(partner())}’s Partner rounds.`}catch(e){S.err="Couldn't send. Try again."}render()}
+function copyShare(){const t=$('#sharetxt')?.textContent||'';const done=()=>{S.ok='Copied. Paste it to your partner.';render()};
+  try{navigator.clipboard.writeText(t).then(done,()=>{const r=document.createRange();r.selectNodeContents($('#sharetxt'));getSelection().removeAllRanges();getSelection().addRange(r)})}catch(e){}}
+
+document.addEventListener('input',e=>{if(e.target.id==='gi'||e.target.id==='mk')refreshSug(e.target.id)});
+document.addEventListener('keydown',e=>{if(e.key!=='Enter')return;if(e.target.id==='gi'||e.target.id==='mk'){const f=document.querySelector(`#sug-${e.target.id} button`);if(f){e.preventDefault();f.click()}}else if(e.target.id==='jc'){e.preventDefault();joinPair(e.target.value)}});
+document.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;
+  if(b.dataset.tab){S.tab=b.dataset.tab;S.err='';S.ok='';S.lastN=0;render();return}
+  const a=b.dataset.act;if(a!=='dismiss'&&a!=='share'){S.err='';S.ok=''}
+  if(a==='guess')guess(b.dataset.d);
+  else if(a==='pick'){S.make.dest=b.dataset.d;render()}
+  else if(a==='unpick'){S.make.dest=null;S.make.clues=null;render()}
+  else if(a==='gen')genClues();
+  else if(a==='selfwrite'){S.make.clues=['','','','','',''];render()}
+  else if(a==='send')sendCustom();
+  else if(a==='playc'){const c=S.customs[b.dataset.id];if(validCustom(c)){S.cur=customPuzzle(b.dataset.id,c);S.tab='play';S.lastN=0;render()}}
+  else if(a==='today'){S.cur=dailyPuzzle();S.lastN=0;render()}
+  else if(a==='vote')vote(b.dataset.d,+b.dataset.v);
+  else if(a==='share')copyShare();
+  else if(a==='create')createPair();
+  else if(a==='join')joinPair($('#jc')?.value||'');
+  else if(a==='unpair')unpair();
+  else if(a==='dismiss'){S.err='';S.ok='';render()}});
+
+render();
+(async()=>{const timer=setTimeout(()=>{if(!S.ready){S.ready=true;render()}},10000);
+  try{const[db,user,sample]=await Promise.all([use('db'),use('user'),use('sample')]);S.sample=sample;S.user=user;
+    if(db&&user){const id=await user.id();if(id){S.uid=id;S.db=db;const d=await db.doc(`data/users/${id}/couple`).get();const c=d.exists?d.data().code:null;if(c){S.code=c;subscribe()}}}}catch(e){}
+  clearTimeout(timer);S.ready=true;render()})();
+}

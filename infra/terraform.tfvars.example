@@ -1,0 +1,5 @@
+# Copy to terraform.tfvars. All values are optional.
+# region           = "us-east-1"
+# env              = "prod"
+# domain_name      = "play.example.com"
+# hosted_zone_name = "example.com"
