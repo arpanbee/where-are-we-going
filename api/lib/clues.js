@@ -12,6 +12,10 @@ export const MAX_HINT_LENGTH = 240;
 const ATTEMPT_TIMEOUT_MS = 20_000;
 const MAX_ATTEMPTS = 2; // first try + one retry
 const MIN_RETRY_BUDGET_MS = 3_000;
+// Muse is a reasoning model: max_tokens covers hidden reasoning plus the answer.
+// At 600 it spent the whole budget reasoning and returned null content.
+const MAX_TOKENS = 4_000;
+const DEFAULT_REASONING_EFFORT = "low"; // ~2x faster than default, same validation pass rate in testing
 
 export class ClueGenerationError extends Error {
   constructor(message, { problems = [], cause } = {}) {
@@ -28,6 +32,14 @@ class MuseHttpError extends Error {
     this.status = status;
     // Auth and bad-request errors won't improve on retry.
     this.retryable = status === 408 || status === 429 || status >= 500;
+  }
+}
+
+/** The model hit max_tokens before writing an answer (usually all reasoning). */
+class MuseTruncatedError extends Error {
+  constructor() {
+    super("Muse reply was cut off at max_tokens before any answer");
+    this.name = "MuseTruncatedError";
   }
 }
 
@@ -140,6 +152,7 @@ export async function generateClues({ name, country, hint }, opts = {}) {
     beforeCall,
     deadline = Infinity,
     model = process.env.MUSE_MODEL || DEFAULT_MODEL,
+    reasoningEffort = process.env.MUSE_REASONING_EFFORT || DEFAULT_REASONING_EFFORT,
     fetchImpl = fetch,
     log = (e) => console.warn(JSON.stringify(e)),
   } = opts;
@@ -157,7 +170,7 @@ export async function generateClues({ name, country, hint }, opts = {}) {
     const apiKey = opts.apiKey ?? (await getMuseApiKey());
 
     try {
-      const content = await callMuse({ apiKey, model, prompt: prompt + feedback, timeout, fetchImpl });
+      const content = await callMuse({ apiKey, model, reasoningEffort, prompt: prompt + feedback, timeout, fetchImpl });
       const clues = parseClues(content);
       const problems = validateClues(clues, dest);
       if (problems.length === 0) return clues.map((c) => c.trim());
@@ -175,7 +188,7 @@ export async function generateClues({ name, country, hint }, opts = {}) {
   throw new ClueGenerationError(`Couldn't generate clues for ${name}`, { cause: lastError });
 }
 
-async function callMuse({ apiKey, model, prompt, timeout, fetchImpl }) {
+async function callMuse({ apiKey, model, reasoningEffort, prompt, timeout, fetchImpl }) {
   const res = await fetchImpl(`${MUSE_BASE_URL}/chat/completions`, {
     method: "POST",
     headers: { "content-type": "application/json", authorization: `Bearer ${apiKey}` },
@@ -185,12 +198,16 @@ async function callMuse({ apiKey, model, prompt, timeout, fetchImpl }) {
         { role: "system", content: "You reply with JSON only." },
         { role: "user", content: prompt },
       ],
-      max_tokens: 600,
+      max_tokens: MAX_TOKENS,
+      ...(reasoningEffort && reasoningEffort !== "none" && { reasoning_effort: reasoningEffort }),
     }),
     signal: AbortSignal.timeout(Math.max(1, timeout)),
   });
   // Deliberately don't log response bodies: error payloads can echo request details.
   if (!res.ok) throw new MuseHttpError(res.status);
   const data = await res.json();
-  return data?.choices?.[0]?.message?.content ?? "";
+  const choice = data?.choices?.[0];
+  const content = choice?.message?.content;
+  if (choice?.finish_reason === "length" && !content) throw new MuseTruncatedError();
+  return content ?? "";
 }

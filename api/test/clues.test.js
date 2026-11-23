@@ -141,3 +141,19 @@ test("pickDestination avoids recently used, falls back to least recent", () => {
   allRecent.set("kyoto", "2026-10-01");
   assert.equal(pickDestination(allRecent, "2026-09-01").id, "kyoto");
 });
+
+test("sends reasoning budget, and retries a reply truncated by max_tokens", async () => {
+  const bodies = [];
+  const truncated = { ok: true, status: 200, json: async () => ({ choices: [{ finish_reason: "length", message: { content: null } }] }) };
+  const replies = [truncated, reply(good)];
+  const events = [];
+  const out = await generateClues(lisbon, {
+    ...quiet,
+    log: (e) => events.push(e),
+    fetchImpl: async (_u, init) => (bodies.push(JSON.parse(init.body)), replies.shift()),
+  });
+  assert.deepEqual(out, good);
+  assert.equal(bodies[0].max_tokens, 4000);
+  assert.equal(bodies[0].reasoning_effort, "low");
+  assert.equal(events[0].error, "MuseTruncatedError");
+});
