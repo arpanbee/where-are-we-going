@@ -1,6 +1,6 @@
 # AWS build plan
 
-Follows the suggested order in [HANDOFF.md](../HANDOFF.md). Status: steps 1–3 deployed (Python backend); step 4 built and tested, not yet deployed; step 5 review tooling and alarms to do.
+Follows the suggested order in [HANDOFF.md](../HANDOFF.md). Status: steps 1–4 deployed (Python backend); step 5 review tooling and alarms to do.
 
 ## Layout
 
@@ -64,7 +64,7 @@ Built ahead of the rest of steps 3–5. The table, the API Lambda behind `/api/*
 - `GET /api/today?date=` serves the stored puzzle whether or not it has been reviewed, and otherwise the prototype's hand-written rotation. For now it returns only clue 1, until server-side guessing exists.
 - To test prompt quality locally: `api/.venv/bin/python scripts/preview_clues.py "Machu Picchu" [--hint ...]`. This uses `MUSE_API_KEY` from the environment, or the secret via your AWS credentials, and doesn't count toward the cap.
 
-## Step 3 — couples, plays, server-side guesses ✅ (code), ⏳ (deploy)
+## Step 3 — couples, plays, server-side guesses ✅
 
 Data (single table, alongside the puzzle and counter items):
 
@@ -89,7 +89,7 @@ Frontend: `web/api.js` client, polling `/state` every 20 s while visible, local-
 
 Tests: `pytest` covers the game rules (distance tiers, unlocking, scoring, redaction, weeks). The end-to-end flow (create, join, third person blocked, redaction, scoring, leave) was run against the real table with throwaway users and cleaned up afterwards.
 
-## Step 4 — partner rounds, bucket list ✅ (code), ⏳ (deploy)
+## Step 4 — partner rounds, bucket list ✅
 
 Data:
 
