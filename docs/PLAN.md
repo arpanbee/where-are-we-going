@@ -1,6 +1,6 @@
 # AWS build plan
 
-Follows the suggested order in [HANDOFF.md](../HANDOFF.md). Status: steps 1–2 deployed; Muse clue generation deployed; step 3 built and tested, not yet deployed; step 4 (rounds send/play, votes) and step 5 review tooling to do.
+Follows the suggested order in [HANDOFF.md](../HANDOFF.md). Status: steps 1–3 deployed (Python backend); step 4 built and tested, not yet deployed; step 5 review tooling and alarms to do.
 
 ## Layout
 
@@ -89,13 +89,29 @@ Frontend: `web/api.js` client, polling `/state` every 20 s while visible, local-
 
 Tests: `pytest` covers the game rules (distance tiers, unlocking, scoring, redaction, weeks). The end-to-end flow (create, join, third person blocked, redaction, scoring, leave) was run against the real table with throwaway users and cleaned up afterwards.
 
-## Step 4 — weekly score, partner rounds, votes
+## Step 4 — partner rounds, bucket list ✅ (code), ⏳ (deploy)
 
-- ~~Weekly score~~: done in step 3 (`/state`).
-- Rounds: `POST /rounds` calls the Meta Model API (`https://api.meta.ai/v1`, `muse-spark-1.1`, OpenAI-compatible chat completions) with the prompt from `genClues()`, and returns draft clues. `POST /rounds/{id}/send` validates that there are 6 non-empty clues and that clues 1–5 don't contain the destination name, then writes the round. The recipient fetches it without `destId`, and guesses go through the same server-side judge.
-- Secrets Manager stores the Meta API key, and Lambda reads it with in-memory caching.
-- Budget guard: a DynamoDB atomic counter `LIMIT#llm#<utc-date>` (global daily cap) and `LIMIT#round#<code>#<date>` (per couple), both with TTL. Exceeding either returns 429 with friendly copy. AWS Budgets sends an email alert for the account.
-- Votes: `POST /votes`. "Trips we both want" is derived in `/state`.
+Data:
+
+| PK | SK | Item |
+|---|---|---|
+| `COUPLE#<code>` | `ROUND#<ms><hex6>` | from, to, destId, clues[6], created, guesses[], done, solved, points |
+| `USER#<uid>` | `VOTE#<destId>` | v (1 = we should go, 0 = not for me) |
+
+- **Rounds** live under the couple, with time-sortable ids so a descending query lists the newest first. Only the recipient plays, so their play is stored on the round item itself, with the same judge and the same optimistic lock as daily puzzles. Rounds don't count toward the weekly score (same as the prototype).
+- **Drafts aren't stored.** `POST /couples/{code}/rounds` returns Muse clues to edit, and `…/rounds/send` validates them and writes the round. This differs from the handoff's `/rounds/{id}/send`: storing drafts would only make sense if they had to survive a reload.
+- **Send validation:** 6 non-empty clues of at most 160 characters each, and clues 1–5 must not name the place. The name check is case- and accent-insensitive and matches at the start of a word, the same as for generated clues. Limit: 20 sends per couple per day.
+- **Votes are per player** (not per couple, as in the handoff sketch), so they work solo and survive leaving a couple. Votes saved in the browser before this step are uploaded once on the next visit.
+- **No spoilers:** `GET /list` never shows a partner's yes vote for a place that is the answer to a daily puzzle (yesterday, today or tomorrow, to cover time zones) or an inbox round you haven't finished.
+
+API (all under `/api`):
+- `POST /couples/{code}/rounds {destId, hint?}` returns a Muse draft (10 per couple per day, plus the global Muse cap)
+- `POST /couples/{code}/rounds/send {destId, clues[6]}`
+- `GET /couples/{code}/rounds` returns the inbox (no destId until you've finished) and the rounds you sent (with destId and your partner's progress)
+- `GET /couples/{code}/rounds/{id}` and `POST …/{id}/guess {destId}`, for the recipient only. Anyone else gets a 404.
+- `POST /votes {destId, v}` and `GET /list?date=`
+
+Tests: 26 unit tests. Step 4 end-to-end: 26 checks against the real table (including one live Muse draft), all cleaned up afterwards. The step 3 flow was rerun with no regressions.
 
 ## Step 5 — daily clue generator and review
 

@@ -6,7 +6,13 @@
   POST /api/couples                      create a couple code
   POST /api/couples/{code}/join
   POST /api/couples/leave
-  POST /api/couples/{code}/rounds {destId, hint?}   draft partner-round clues
+  POST /api/couples/{code}/rounds {destId, hint?}   draft partner-round clues (Muse)
+  POST /api/couples/{code}/rounds/send {destId, clues[6]}
+  GET  /api/couples/{code}/rounds                   inbox + sent
+  GET  /api/couples/{code}/rounds/{id}              play view (recipient only)
+  POST /api/couples/{code}/rounds/{id}/guess {destId}
+  POST /api/votes {destId, v}                       bucket-list vote (0 or 1)
+  GET  /api/list?date=YYYY-MM-DD                    my votes, trips we both want
 
 Identity is the X-Device-Token header (see httputil.py). "Today" is the player's
 local date, accepted within a day of UTC so no time zone is locked out but future
@@ -29,6 +35,8 @@ from .game import GuessError, new_play, partner_view, play_view
 from .httputil import parse_body, require_uid, uid_from
 from .plays import get_or_start_play, get_play, guess, week_points
 from .puzzles import get_puzzle
+from .rounds import guess_round, list_rounds, round_view, send_round, unfinished_inbox_answers
+from .votes import bucket_list, cast_vote
 
 muse_key.prime()  # fetch the key during cold start; cached for the container's life
 
@@ -120,14 +128,20 @@ def post_leave(event, _ctx):
 
 # --- Partner rounds -----------------------------------------------------------------
 
-def draft_round(event, ctx, raw_code):
-    """Draft 6 clues for a partner round. Nothing is stored until it's sent (step 4)."""
+def _member(event, raw_code):
+    """(uid, couple) for a member of the couple in the path, else 404. Same answer
+    for "no such couple" and "not a member", so codes can't be probed."""
     uid = require_uid(event)
-    code = _couple_code(raw_code)
-    couple = get_couple(code)
-    # Same response for "no such couple" and "not a member", so codes can't be probed.
+    couple = get_couple(_couple_code(raw_code))
     if not couple or uid not in couple["members"]:
         raise HttpError(404, "No couple found with that code.")
+    return uid, couple
+
+
+def draft_round(event, ctx, raw_code):
+    """Draft 6 clues for a partner round. Nothing is stored until it's sent."""
+    uid, couple = _member(event, raw_code)
+    code = couple["code"]
 
     body = parse_body(event)
     dest = BY_ID.get(body.get("destId")) if isinstance(body.get("destId"), str) else None
@@ -148,6 +162,58 @@ def draft_round(event, ctx, raw_code):
     return {"draft": {"destId": dest["id"], "clues": clues}}
 
 
+def post_send_round(event, _ctx, raw_code):
+    uid, couple = _member(event, raw_code)
+    partner = next((m for m in couple["members"] if m != uid), None)
+    if not partner:
+        raise HttpError(409, "Your partner hasn't joined yet.")
+    body = parse_body(event)
+    return send_round(couple["code"], uid, partner, body.get("destId"), body.get("clues"))
+
+
+def get_rounds(event, _ctx, raw_code):
+    uid, couple = _member(event, raw_code)
+    return list_rounds(couple["code"], uid)
+
+
+def get_round(event, _ctx, raw_code, round_id):
+    uid, couple = _member(event, raw_code)
+    return round_view(couple["code"], round_id, uid)
+
+
+def post_round_guess(event, _ctx, raw_code, round_id):
+    uid, couple = _member(event, raw_code)
+    body = parse_body(event)
+    if not isinstance(body.get("destId"), str):
+        raise HttpError(400, "Pick a destination from the list.")
+    return guess_round(couple["code"], round_id, uid, body["destId"])
+
+
+# --- Bucket list --------------------------------------------------------------------
+
+def post_vote(event, _ctx):
+    body = parse_body(event)
+    cast_vote(require_uid(event), body.get("destId"), body.get("v"))
+    return {"ok": True}
+
+
+def get_list(event, _ctx):
+    uid = require_uid(event)
+    d = _play_date(_qs(event).get("date"))
+    couple = couple_of(uid)
+    partner_id = next((m for m in couple["members"] if m != uid), None) if couple else None
+    hidden = set()
+    if partner_id:
+        # Partners can be a day apart across time zones: hide answers to any nearby
+        # daily puzzle I haven't finished, and to rounds waiting for me.
+        for day in (add_days(d, -1), d, add_days(d, 1)):
+            play = get_play(uid, day)
+            if not (play and play["done"]):
+                hidden.add(play["destId"] if play else get_puzzle(day)["destId"])
+        hidden |= unfinished_inbox_answers(couple["code"], uid)
+    return {**bucket_list(uid, partner_id, hidden), "paired": bool(partner_id)}
+
+
 ROUTES = [
     ("GET", re.compile(r"^/api/today$"), get_today),
     ("POST", re.compile(r"^/api/today/guess$"), post_guess),
@@ -156,6 +222,12 @@ ROUTES = [
     ("POST", re.compile(r"^/api/couples/leave$"), post_leave),
     ("POST", re.compile(r"^/api/couples/([^/]+)/join$"), post_join),
     ("POST", re.compile(r"^/api/couples/([^/]+)/rounds$"), draft_round),
+    ("GET", re.compile(r"^/api/couples/([^/]+)/rounds$"), get_rounds),
+    ("POST", re.compile(r"^/api/couples/([^/]+)/rounds/send$"), post_send_round),
+    ("GET", re.compile(r"^/api/couples/([^/]+)/rounds/([^/]+)$"), get_round),
+    ("POST", re.compile(r"^/api/couples/([^/]+)/rounds/([^/]+)/guess$"), post_round_guess),
+    ("POST", re.compile(r"^/api/votes$"), post_vote),
+    ("GET", re.compile(r"^/api/list$"), get_list),
 ]
 
 

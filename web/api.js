@@ -44,4 +44,13 @@ export const api = {
   createCouple: () => call('POST', '/couples'),
   joinCouple: (code) => call('POST', `/couples/${encodeURIComponent(code)}/join`),
   leaveCouple: () => call('POST', '/couples/leave'),
+  // Partner rounds (all under the caller's couple)
+  rounds: (code) => call('GET', `/couples/${encodeURIComponent(code)}/rounds`),
+  draftRound: (code, destId, hint) => call('POST', `/couples/${encodeURIComponent(code)}/rounds`, { destId, hint }),
+  sendRound: (code, destId, clues) => call('POST', `/couples/${encodeURIComponent(code)}/rounds/send`, { destId, clues }),
+  round: (code, id) => call('GET', `/couples/${encodeURIComponent(code)}/rounds/${encodeURIComponent(id)}`),
+  roundGuess: (code, id, destId) => call('POST', `/couples/${encodeURIComponent(code)}/rounds/${encodeURIComponent(id)}/guess`, { destId }),
+  // Bucket list
+  vote: (destId, v) => call('POST', '/votes', { destId, v }),
+  list: (date) => call('GET', '/list' + q(date)),
 };

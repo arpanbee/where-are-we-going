@@ -144,3 +144,33 @@ def transact(items: list) -> None:
                 if r.get("Code") == "ConditionalCheckFailed":
                     raise TransactionConflict(i) from None
         raise
+
+
+def query_prefix(pk: str, sk_prefix: str, newest_first: bool = False, limit: int | None = None) -> list:
+    """Items in a partition whose SK starts with the prefix."""
+    kwargs = {"KeyConditionExpression": Key("PK").eq(pk) & Key("SK").begins_with(sk_prefix),
+              "ScanIndexForward": not newest_first}
+    items = []
+    while True:
+        if limit:
+            kwargs["Limit"] = limit - len(items)
+        out = table.query(**kwargs)
+        items.extend(out.get("Items", []))
+        if "LastEvaluatedKey" not in out or (limit and len(items) >= limit):
+            return items
+        kwargs["ExclusiveStartKey"] = out["LastEvaluatedKey"]
+
+
+def update_if(key: dict, update: str, condition: str, values: dict, names: dict | None = None) -> bool:
+    """Conditional update. False if the condition failed."""
+    kwargs = {"Key": key, "UpdateExpression": update, "ConditionExpression": condition,
+              "ExpressionAttributeValues": values}
+    if names:
+        kwargs["ExpressionAttributeNames"] = names
+    try:
+        table.update_item(**kwargs)
+        return True
+    except ClientError as err:
+        if error_code(err) == "ConditionalCheckFailedException":
+            return False
+        raise
